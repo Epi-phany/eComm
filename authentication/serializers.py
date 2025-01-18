@@ -1,7 +1,6 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
-from .models import CustomUser
+from .models import CustomUser,UserProfile
 from rest_framework_simplejwt.tokens import RefreshToken
 
 #User = get_user_model()
@@ -53,4 +52,25 @@ class MyTokenObtainSerializer(serializers.Serializer):
         else:
             raise serializers.ValidationError('Must include "username" and "password"')
         
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['user','address']
+        
+    def create(self, validated_data):
+        profiles = UserProfile.objects.create(**validated_data)
+        profiles.save()
+        return profiles
+    
+class UserListSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    class Meta:
+        model = UserProfile
+        fields = ['username','address']
+
+        def get(self,validated_data):
+            profiles = UserProfile.objects.get(**validated_data)
+            return profiles
 
