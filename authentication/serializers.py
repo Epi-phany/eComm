@@ -58,17 +58,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['user','address']
+        read_only_fields = ['user']
         
     def create(self, validated_data):
-        profiles = UserProfile.objects.create(**validated_data)
-        profiles.save()
-        return profiles
+        try:
+            validated_data['user'] = self.context['request'].user
+            return super().create(validated_data)
+        except Exception as e:
+            raise serializers.ValidationError({'detail': str(e)})
+        # profiles = UserProfile.objects.create(**validated_data)
+        # profiles.save()
+        # return profiles
     
 class UserListSerializer(serializers.ModelSerializer):
+    mobile = serializers.CharField(source='user.mobile',read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = UserProfile
-        fields = ['username','address']
+        fields = ['username','address','mobile']
 
         def get(self,validated_data):
             profiles = UserProfile.objects.get(**validated_data)
