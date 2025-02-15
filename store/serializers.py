@@ -17,24 +17,18 @@ class ProductCreateSerializer(serializers.ModelSerializer):
         return products
 
 
+
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ['id','product','quantity','status','total_price','ordered_at']
-        read_only_fields = ['total_price']
+        fields = ['id', 'product', 'quantity', 'status', 'total_price', 'ordered_at']
+        read_only_fields = ['total_price', 'ordered_at']
 
-    def create(self,validated_data):
-            orders = Order.objects.create(**validated_data)
-            orders.save()
-            return orders
-        
-    def update(self,instance,validated_data):
-            instance.product = validated_data.get('product',instance.product)
-            instance.quantity = validated_data.get('quantity',instance.quantity)
-            instance.status = validated_data.get('status',instance.status)
-            instance.ordered_at = validated_data.get('ordered_at',instance.ordered_at)
-            instance.save()
-            return instance
+    def validate_status(self, value):
+        if self.instance and self.instance.status == 'CANCELED' and value != 'CANCELED':
+            raise serializers.ValidationError("Cannot change the status of a canceled order.")
+        return value
+
 
 class CartSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)

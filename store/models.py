@@ -37,12 +37,38 @@ class Order(models.Model):
     total_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     ordered_at = models.DateTimeField(auto_now_add=True)
 
+    # def save(self, *args, **kwargs):
+    #     self.total_price = self.quantity * self.product.price
+    #     super().save(*args, **kwargs)
     def save(self, *args, **kwargs):
-        self.total_price = self.quantity * self.product.price
-        super().save(*args, **kwargs)
+        if self.pk:  
+            previous_status = Order.objects.get(pk=self.pk).status
+            if previous_status != self.status:
+                OrderStatusHistory.objects.create(order=self, status=self.status)
+            self.total_price = self.quantity * self.product.price
+            super().save(*args, **kwargs)
+    def cancel(self):
+        if self.status not in ['PENDING']:
+            raise ValueError("Only pending orders can be canceled.")
+        self.status = 'CANCELED'
+        self.save()
+
+    def ship(self):
+        if self.status != 'PENDING':
+            raise ValueError("Only pending orders can be shipped.")
+        self.status = 'SHIPPED'
+        self.save()
 
     def __str__(self):
         return f'Order of {self.product.name}'
+    
+
+class OrderStatusHistory(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
+    status = models.CharField(max_length=30, choices=Order.STATUS)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f'{self.order} - {self.status} at {self.changed_at}'
 
 class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)

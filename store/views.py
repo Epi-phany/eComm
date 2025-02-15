@@ -2,6 +2,8 @@ from rest_framework import generics,status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from . models import *
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework import permissions
 from . serializers import ProductCreateSerializer,CategorySerializer,OrderSerializer,CartItemSerializer,CartSerializer
 
@@ -15,9 +17,20 @@ class CategoryView(generics.ListCreateAPIView):
     serializer_class = CategorySerializer
 
 class OrderCreateView(generics.ListCreateAPIView):
-    queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status']  # Filter by status
+    search_fields = ['product__name']  # Search by product name
+    ordering_fields = ['ordered_at', 'total_price']  # Sort by date or price
 
+    def get_queryset(self):
+        # Return orders belonging to the logged-in user
+        return Order.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Automatically associate the logged-in user with the order
+        serializer.save(user=self.request.user)
 class CartView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -37,7 +50,6 @@ class CartView(APIView):
             )
         serializer = CartSerializer(cart)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 
 class CartItemView(APIView):
